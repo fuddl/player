@@ -1,0 +1,15 @@
+#playlist {
+  display:none;
+}
+
+table {
+  max-width:300px;
+}
+
+td {
+  with:30%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 1px solid black;
+}
