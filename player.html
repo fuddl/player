@@ -11,33 +11,79 @@
 <script>
 
 
-(function( $ ){
+(function($){
+  var mp3, ogg, lib = new Array();
 
   var methods = {
     init : function( options ) {
-      var library = localStorage.getItem('library');
-      if(library == null) {
+      var tmpLib = localStorage.getItem('lib');
+      mp3 = this.player('canPlay', 'audio/mpeg;');
+      ogg =  this.player('canPlay', 'audio/ogg; codecs="vorbis"');
+      if(tmpLib == null) {
         this.player('uploadDialog');
+      } else {
+        lib = $.parseJSON(tmpLib);
+        this.player('updateListing');
       }
-
     },
     uploadDialog : function() {
       var uploadElement =  $('<input webkitdirectory directory multiple mozdirectory type="file" />');
       var _this = this;
       uploadElement.bind('change', function() {
-        this.addFiles(this.files);
+        _this.player('getFiles', this.files);
       });
       this.append(uploadElement);
     },
-    addFiles: function() {
-      var queue = [];
-      var mp3 = canPlay('audio/mpeg;'), ogg = canPlay('audio/ogg; codecs="vorbis"');
-      for(var i = 0; i < files.length; i++) {
-        var file = files[i];
-        if(this.verifyAudiofile(file)) {
-          queue.push(file);
+    getFiles: function(files) {
+      var _this = this;
+      var fileCount = 0;
+      var i = 0;
+      $.each(files, function(key, file) {
+        if(_this.player('verifyAudiofile', file)) {
+          fileCount++;
+          _this.player('addMetaData', file, function(tags) {
+            file.metadata = tags;
+            entry = {
+              'file': file,
+              'metadata': tags
+            };
+            _this.player('addFile', entry);
+            i++;
+            if(fileCount == i) {
+              _this.player('saveLib');
+            }
+          });
         }
+      });
+    },
+    addFile: function(file) {
+      lib.push(file);
+    },
+    saveLib: function(file) {
+      localStorage.setItem('lib', JSON.stringify(lib));
+      this.player('updateListing');
+    },
+    updateListing: function() {
+      var listingId = 'track-listing';
+      if(this.find('#' + listingId).length == 0) {
+        var table = $('<table />').attr('id', listingId);
+        this.append(table);
       }
+      var listing = this.find('#' + listingId);
+      $.each(lib, function(key, item) {
+        var metadata = item.metadata
+        var row = $('<tr />');
+        row
+        .append($('<td/>').html(metadata.Title))
+        .append($('<td/>').html(metadata.Artist))
+        .append($('<td/>').html(metadata.Album));
+
+        listing.append(row);
+      });
+    },
+    canPlay: function(type) {
+      var a = document.createElement('audio');
+      return !!(a.canPlayType && a.canPlayType(type).replace(/no/, ''));
     },
     verifyAudiofile: function(file) {
       var path = file.webkitRelativePath || file.mozFullPath || file.name;
@@ -62,14 +108,10 @@
         }
       }
     },
-    show : function( ) {
-      // IS
-    },
-    hide : function( ) {
-      // GOOD
-    },
-    update : function( content ) {
-      // !!!
+    addMetaData: function(file, callback) {
+      ID3v2.parseFile(file, function(tags) {
+        return callback(tags);
+      });
     }
   };
 
@@ -109,19 +151,7 @@
   Anyway, this is more of a proof of concept and in a weird backwards way, I prefer
   to do my prototypes without jQuery.
   */
-function parseFile(file, callback){
-  if(localStorage[file.name]) return callback(JSON.parse(localStorage[file.name]));
-    ID3v2.parseFile(file,function(tags){
-    //to not overflow localstorage
-    localStorage[file.name] = JSON.stringify({
-      Title: tags.Title,
-      Artist: tags.Artist,
-      Album: tags.Album,
-      Genre: tags.Genre
-    });
-    callback(tags);
-  })
-}
+
 
 function runSearch(query){
   console.log(query);
@@ -135,10 +165,6 @@ function runSearch(query){
   }
 }
 
-function canPlay(type){
-  var a = document.createElement('audio');
-  return !!(a.canPlayType && a.canPlayType(type).replace(/no/, ''));
-}
 
 function $(id){
   return document.getElementById(id);
