@@ -42,15 +42,11 @@
       var fileCount = 0;
       var i = 0;
       $.each(files, function(key, file) {
-        var path = file.webkitRelativePath || file.mozFullPath || file.name;
-        if(_this.player('verifyAudiofile', path, file)) {
+        if(_this.player('verifyAudiofile', file)) {
           fileCount++;
           _this.player('addMetaData', file, function(tags) {
-            entry = {
-              'path': path,
-              'meta': tags
-            };
-            _this.player('addFile', entry);
+            $.extend(file, {'meta': tags})
+            _this.player('addFile', file);
             i++;
             if(fileCount == i) {
               _this.player('saveLib');
@@ -74,8 +70,9 @@
       }
       var listing = this.find('#' + listingId);
       $.each(lib, function(key, item) {
-        var metadata = item.meta
-        var row = $('<tr />');
+        var metadata = item.meta;
+        console.log(item);
+        var row = $('<tr />').attr('data-path', item.path);
         row
         .append($('<td/>').html(metadata.Title))
         .append($('<td/>').html(metadata.Artist))
@@ -88,7 +85,8 @@
       var a = document.createElement('audio');
       return !!(a.canPlayType && a.canPlayType(type).replace(/no/, ''));
     },
-    verifyAudiofile: function(path, file) {
+    verifyAudiofile: function(file) {
+      var path = file.webkitRelativePath || file.mozFullPath || file.name;
       if (path.indexOf('.AppleDouble') != -1) {
         // Meta-data folder on Apple file systems, skip
         return false;
