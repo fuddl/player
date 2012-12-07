@@ -13,6 +13,9 @@
 
 (function($){
   var mp3, ogg, lib = new Array();
+  var allowedMetaData = [
+   'Artist', 'Album', 'Title'
+  ];
 
   var methods = {
     init : function( options ) {
@@ -39,13 +42,13 @@
       var fileCount = 0;
       var i = 0;
       $.each(files, function(key, file) {
-        if(_this.player('verifyAudiofile', file)) {
+        var path = file.webkitRelativePath || file.mozFullPath || file.name;
+        if(_this.player('verifyAudiofile', path, file)) {
           fileCount++;
           _this.player('addMetaData', file, function(tags) {
-            file.metadata = tags;
             entry = {
-              'file': file,
-              'metadata': tags
+              'path': path,
+              'meta': tags
             };
             _this.player('addFile', entry);
             i++;
@@ -71,7 +74,7 @@
       }
       var listing = this.find('#' + listingId);
       $.each(lib, function(key, item) {
-        var metadata = item.metadata
+        var metadata = item.meta
         var row = $('<tr />');
         row
         .append($('<td/>').html(metadata.Title))
@@ -85,8 +88,7 @@
       var a = document.createElement('audio');
       return !!(a.canPlayType && a.canPlayType(type).replace(/no/, ''));
     },
-    verifyAudiofile: function(file) {
-      var path = file.webkitRelativePath || file.mozFullPath || file.name;
+    verifyAudiofile: function(path, file) {
       if (path.indexOf('.AppleDouble') != -1) {
         // Meta-data folder on Apple file systems, skip
         return false;
@@ -110,7 +112,12 @@
     },
     addMetaData: function(file, callback) {
       ID3v2.parseFile(file, function(tags) {
-        return callback(tags);
+        var output = {};
+        $.each(allowedMetaData, function(k,v) {
+          output[v] = tags[v];
+        });
+        console.log(output);
+        return callback(output);
       });
     }
   };
